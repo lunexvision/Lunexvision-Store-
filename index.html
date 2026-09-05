@@ -6,6 +6,7 @@
 <title>LunexVision — Eyewear</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --ink:#1C2333;
@@ -210,19 +211,36 @@
 </div>
 
 <script>
-const products = [
-  {id:1, name:"Aster Round", type:"Optical · Acetate", price:2499, cat:"optical"},
-  {id:2, name:"Solstice Aviator", type:"Sunglasses · Metal", price:3299, cat:"sun"},
-  {id:3, name:"Halden Square", type:"Optical · TR90", price:1899, cat:"optical"},
-  {id:4, name:"Marlow Cat-Eye", type:"Sunglasses · Acetate", price:2899, cat:"sun"},
-  {id:5, name:"Tiny Explorer", type:"Kids · Flex frame", price:1299, cat:"kids"},
-  {id:6, name:"Daily Clear 30pk", type:"Contact Lenses", price:999, cat:"contact"},
-  {id:7, name:"Rook Wayfarer", type:"Optical · Acetate", price:2199, cat:"optical"},
-  {id:8, name:"Ferro Rimless", type:"Optical · Titanium", price:3999, cat:"optical"},
-];
+// ---- SUPABASE CONFIG: replace with your own values from Settings → API ----
+const SUPABASE_URL = "https://opfxkdtbtagooohudvto.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wZnhrZHRidGFnb29vaHVkdnRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NTAwMzAsImV4cCI6MjEwNDEyNjAzMH0.IUHqfdz4V3vhCER9iSpPWYC-Vp-pszWsJp6vBiMpt1Y";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+let products = [];
 let cart = {};
 let currentCat = 'all';
+
+async function loadProducts(){
+  const grid = document.getElementById('product-grid');
+  grid.innerHTML = '<p style="padding:20px;color:#8A8F98;grid-column:1/-1;">Loading frames…</p>';
+
+  const { data, error } = await sb
+    .from('products')
+    .select('*')
+    .eq('in_stock', true);
+
+  if(error){
+    grid.innerHTML = '<p style="padding:20px;color:#8A8F98;grid-column:1/-1;">Could not load products. Check your Supabase URL/key.</p>';
+    console.error(error);
+    return;
+  }
+
+  products = data.map(p => ({
+    id: p.id, name: p.name, type: p.type, price: p.price,
+    cat: p.category, img: p.image_url
+  }));
+  renderGrid();
+}
 
 function glassesIcon(){
   return `<svg width="60" height="30" viewBox="0 0 60 30" fill="none">
@@ -240,7 +258,7 @@ function renderGrid(){
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
-      <div class="card-img">${glassesIcon()}</div>
+      <div class="card-img">${p.img ? `<img src="${p.img}" style="width:100%;height:100%;object-fit:cover">` : glassesIcon()}</div>
       <div class="card-body">
         <div class="name">${p.name}</div>
         <div class="type">${p.type}</div>
@@ -314,7 +332,7 @@ function toggleCart(open){
   document.getElementById('overlay').classList.toggle('show', open);
 }
 
-renderGrid();
+loadProducts();
 updateCartUI();
 </script>
 </body>
