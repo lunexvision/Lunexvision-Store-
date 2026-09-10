@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LunexVision — Eyewear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#1C2333;
+    --paper:#FAF7F2;
+    --amber:#C67C3E;
+    --sage:#4C6B5E;
+    --line:#D8D3C8;
+    --white:#FFFFFF;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding-bottom:70px;
+  }
+  h1,h2,h3{font-family:'Spectral',serif; font-weight:500;}
+
+  /* NAV */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px;
+  }
+  .logo{font-family:'Spectral',serif; font-size:20px; letter-spacing:0.5px;}
+  .logo em{font-style:normal; color:var(--amber);}
+  #cart-btn{
+    position:relative; background:none; border:1px solid var(--ink);
+    border-radius:0; width:38px; height:38px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  #cart-count{
+    position:absolute; top:-7px; right:-7px;
+    background:var(--amber); color:var(--white);
+    font-size:11px; font-weight:600;
+    width:18px; height:18px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* HERO */
+  .hero{
+    position:relative;
+    height:340px;
+    background:linear-gradient(160deg, #232B40 0%, #1C2333 60%);
+    display:flex; align-items:flex-end;
+    overflow:hidden;
+  }
+  .hero svg{position:absolute; top:20px; right:-30px; opacity:0.9;}
+  .hero-content{
+    position:relative; z-index:2;
+    padding:28px 20px 26px;
+    color:var(--paper);
+  }
+  .hero-content .eyebrow{
+    font-size:13px; color:var(--amber); margin-bottom:6px; display:block;
+  }
+  .hero-content h1{font-size:30px; line-height:1.15; max-width:280px;}
+  .hero-content p{font-size:14px; color:#C7CCD8; margin-top:10px; max-width:260px;}
+
+  /* CATEGORY CHIPS */
+  .chips{
+    display:flex; gap:10px; padding:16px 18px;
+    overflow-x:auto; border-bottom:1px solid var(--line);
+  }
+  .chip{
+    flex:0 0 auto; padding:8px 16px; font-size:13px;
+    border:1px solid var(--line); background:var(--white);
+    cursor:pointer; white-space:nowrap; color:var(--ink);
+  }
+  .chip.active{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+
+  /* PRODUCT GRID */
+  .section-title{padding:22px 18px 4px; font-size:20px;}
+  .grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:14px;
+    padding:14px 18px 10px;
+  }
+  .card{
+    background:var(--white); border:1px solid var(--line);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .card-img{
+    height:120px; display:flex; align-items:center; justify-content:center;
+    background:#F1EDE5; position:relative; overflow:hidden;
+  }
+  .card-img img{display:block;}
+  .img-nav{
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:22px; height:22px; border-radius:50%;
+    background:rgba(28,35,51,0.55); border:none; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; cursor:pointer; z-index:2; padding:0;
+  }
+  .img-nav.prev{left:6px;}
+  .img-nav.next{right:6px;}
+  .img-dots{
+    position:absolute; bottom:6px; left:0; right:0;
+    display:flex; justify-content:center; gap:4px; z-index:2;
+  }
+  .img-dots span{
+    width:5px; height:5px; border-radius:50%;
+    background:rgba(28,35,51,0.3);
+  }
+  .img-dots span.active{background:var(--ink);}
+  .card-body{padding:12px;}
+  .card-body .name{font-size:14px; font-weight:600; margin-bottom:2px;}
+  .card-body .type{font-size:12px; color:#787E8A; margin-bottom:8px;}
+  .card-body .row{display:flex; align-items:center; justify-content:space-between;}
+  .price{font-size:15px; font-weight:700;}
+  .add-btn{
+    border:1px solid var(--ink); background:none; color:var(--ink);
+    font-size:12px; padding:6px 10px; cursor:pointer;
+  }
+  .add-btn:active{background:var(--ink); color:var(--paper);}
+
+  /* CART DRAWER */
+  #overlay{
+    position:fixed; inset:0; background:rgba(28,35,51,0.4);
+    opacity:0; pointer-events:none; transition:opacity 0.25s; z-index:60;
+  }
+  #overlay.show{opacity:1; pointer-events:auto;}
+  #cart-drawer{
+    position:fixed; top:0; right:0; height:100%; width:86%; max-width:360px;
+    background:var(--paper); z-index:70;
+    transform:translateX(100%); transition:transform 0.3s ease;
+    display:flex; flex-direction:column;
+  }
+  #cart-drawer.show{transform:translateX(0);}
+  .cart-header{
+    padding:18px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .cart-header h2{font-size:19px;}
+  #close-cart{background:none; border:none; font-size:20px; cursor:pointer;}
+  #cart-items{flex:1; overflow-y:auto; padding:10px 18px;}
+  .cart-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 0; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  .cart-item .qty-btns{display:flex; align-items:center; gap:8px; margin-top:4px;}
+  .qty-btns button{
+    width:22px; height:22px; border:1px solid var(--line); background:var(--white);
+    cursor:pointer; font-size:13px;
+  }
+  .cart-footer{padding:18px; border-top:1px solid var(--line);}
+  .cart-footer .row{display:flex; justify-content:space-between; font-size:15px; margin-bottom:12px;}
+  .checkout-btn{
+    width:100%; background:var(--ink); color:var(--paper);
+    border:none; padding:14px; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .empty-msg{color:#8A8F98; font-size:14px; padding:30px 0; text-align:center;}
+
+  /* STICKY BOTTOM BAR */
+  #bottom-bar{
+    position:fixed; bottom:0; left:0; right:0; z-index:40;
+    background:var(--ink); color:var(--paper);
+    display:none; align-items:center; justify-content:space-between;
+    padding:14px 18px;
+  }
+  #bottom-bar.show{display:flex;}
+  #bottom-bar span{font-size:13px;}
+  #bottom-bar button{
+    background:var(--amber); color:var(--white); border:none;
+    padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer;
+  }
+</style>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="logo">Lunex<em>Vision</em></div>
+  <button id="cart-btn" onclick="toggleCart(true)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1C2333" stroke-width="1.6"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6L4 3H2"/></svg>
+    <span id="cart-count">0</span>
+  </button>
+</header>
+
+<section class="hero">
+  <svg width="220" height="150" viewBox="0 0 220 150" fill="none">
+    <circle cx="70" cy="75" r="45" stroke="#C67C3E" stroke-width="3"/>
+    <circle cx="150" cy="75" r="45" stroke="#C67C3E" stroke-width="3"/>
+    <line x1="115" y1="75" x2="105" y2="75" stroke="#C67C3E" stroke-width="3"/>
+  </svg>
+  <div class="hero-content">
+    <span class="eyebrow">New season frames</span>
+    <h1>See the details others miss</h1>
+    <p>Curated eyewear from LunexVision — order online, pick up or ship anywhere in India.</p>
+  </div>
+</section>
+
+<div class="chips">
+  <div class="chip active" onclick="filterCat('all', this)">All</div>
+  <div class="chip" onclick="filterCat('sun', this)">Sunglasses</div>
+  <div class="chip" onclick="filterCat('optical', this)">Optical Frames</div>
+  <div class="chip" onclick="filterCat('kids', this)">Kids</div>
+  <div class="chip" onclick="filterCat('contact', this)">Contact Lenses</div>
+</div>
+
+<h2 class="section-title">Featured</h2>
+<div class="grid" id="product-grid"></div>
+
+<!-- Cart -->
+<div id="overlay" onclick="toggleCart(false)"></div>
+<div id="cart-drawer">
+  <div class="cart-header">
+    <h2>Your Cart</h2>
+    <button id="close-cart" onclick="toggleCart(false)">✕</button>
+  </div>
+  <div id="cart-items"></div>
+  <div class="cart-footer">
+    <div class="row"><span>Total</span><strong id="cart-total">₹0</strong></div>
+    <button class="checkout-btn" onclick="startRazorpayCheckout()">Pay Securely with Razorpay</button>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <span id="bottom-bar-text">0 items</span>
+  <button onclick="toggleCart(true)">View Cart</button>
+</div>
+
+<script>
+// ---- SUPABASE CONFIG: replace with your own values from Settings → API ----
+const SUPABASE_URL = "https://opfxkdtbtagooohudvto.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wZnhrZHRidGFnb29vaHVkdnRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NTAwMzAsImV4cCI6MjEwNDEyNjAzMH0.IUHqfdz4V3vhCER9iSpPWYC-Vp-pszWsJp6vBiMpt1Y";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Razorpay public Key ID only. NEVER put the Razorpay Key Secret in this HTML.
+const RAZORPAY_KEY_ID = "rzp_live_REPLACE_WITH_YOUR_KEY_ID";
+const RAZORPAY_FUNCTION_URL = SUPABASE_URL + "/functions/v1/razorpay";
+
+let products = [];
+let cart = {};
+let currentCat = 'all';
+
+async function loadProducts(){
+  const grid = document.getElementById('product-grid');
+  grid.innerHTML = '<p style="padding:20px;color:#8A8F98;grid-column:1/-1;">Loading frames…</p>';
+
+  const { data, error } = await sb
+    .from('products')
+    .select('*')
+    .eq('in_stock', true);
+
+  if(error){
+    grid.innerHTML = '<p style="padding:20px;color:#8A8F98;grid-column:1/-1;">Could not load products. Check your Supabase URL/key.</p>';
+    console.error(error);
+    return;
+  }
+
+  products = data.map(p => ({
+    id: p.id, name: p.name, type: p.type, price: p.price,
+    cat: p.category,
+    images: (Array.isArray(p.image_urls) && p.image_urls.length)
+      ? p.image_urls
+      : (p.image_url ? [p.image_url] : [])
+  }));
+  renderGrid();
+}
+
+const imgIndex = {}; // tracks which image is currently shown per product id
+
+function shiftImage(id, delta, evt){
+  if(evt) evt.stopPropagation();
+  const p = products.find(pr => pr.id === id);
+  if(!p || p.images.length < 2) return;
+  const len = p.images.length;
+  imgIndex[id] = ((imgIndex[id] || 0) + delta + len) % len;
+  renderGrid();
+}
+
+function glassesIcon(){
+  return `<svg width="60" height="30" viewBox="0 0 60 30" fill="none">
+    <circle cx="15" cy="15" r="12" stroke="#1C2333" stroke-width="2"/>
+    <circle cx="45" cy="15" r="12" stroke="#1C2333" stroke-width="2"/>
+    <line x1="27" y1="15" x2="33" y2="15" stroke="#1C2333" stroke-width="2"/>
+  </svg>`;
+}
+
+function renderGrid(){
+  const grid = document.getElementById('product-grid');
+  grid.innerHTML = '';
+  const list = products.filter(p => currentCat === 'all' || p.cat === currentCat);
+  list.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const idx = (imgIndex[p.id] || 0) % (p.images.length || 1);
+    const hasMulti = p.images.length > 1;
+    const imgHtml = p.images.length
+      ? `<img src="${p.images[idx]}" style="width:100%;height:100%;object-fit:cover">`
+      : glassesIcon();
+    const navHtml = hasMulti ? `
+      <button class="img-nav prev" onclick="shiftImage(${p.id},-1,event)">&#8249;</button>
+      <button class="img-nav next" onclick="shiftImage(${p.id},1,event)">&#8250;</button>
+      <div class="img-dots">${p.images.map((_,i)=>`<span class="${i===idx?'active':''}"></span>`).join('')}</div>
+    ` : '';
+    card.innerHTML = `
+      <div class="card-img">${imgHtml}${navHtml}</div>
+      <div class="card-body">
+        <div class="name">${p.name}</div>
+        <div class="type">${p.type}</div>
+        <div class="row">
+          <span class="price">₹${p.price}</span>
+          <button class="add-btn" onclick="addToCart(${p.id})">Add</button>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function filterCat(cat, el){
+  currentCat = cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function addToCart(id){
+  cart[id] = (cart[id] || 0) + 1;
+  updateCartUI();
+}
+function changeQty(id, delta){
+  cart[id] = (cart[id] || 0) + delta;
+  if(cart[id] <= 0) delete cart[id];
+  updateCartUI();
+}
+
+function getOfferPrice(qty){
+  if(qty <= 0) return 0;
+  const slabs = {1:70,2:100,3:140,4:170,5:210,6:240};
+  if(slabs[qty]) return slabs[qty];
+  const groups = Math.floor(qty / 3);
+  const remainder = qty % 3;
+  return groups * 140 + (remainder === 1 ? 70 : remainder === 2 ? 100 : 0);
+}
+
+// Offer applies to eyewear products only. Contact lenses keep their normal price.
+function isOfferProduct(p){
+  return p && p.cat !== 'contact' && String(p.type || '').toLowerCase() !== 'contact lens';
+}
+
+function updateCartUI(){
+  const itemsEl = document.getElementById('cart-items');
+  const count = Object.values(cart).reduce((a,b)=>a+b,0);
+  let offerQty = 0;
+  let contactTotal = 0;
+
+  document.getElementById('cart-count').textContent = count;
+
+  Object.entries(cart).forEach(([id,qty])=>{
+    const p = products.find(pr=>pr.id == id);
+    if(!p) return;
+    if(isOfferProduct(p)) offerQty += qty;
+    else contactTotal += Number(p.price) * qty;
+  });
+
+  const offerTotal = getOfferPrice(offerQty);
+  const total = offerTotal + contactTotal;
+
+  if(count === 0){
+    itemsEl.innerHTML = '<div class="empty-msg">Your cart is empty</div>';
+  } else {
+    itemsEl.innerHTML = '';
+    Object.entries(cart).forEach(([id,qty])=>{
+      const p = products.find(pr=>pr.id == id);
+      if(!p) return;
+      const row = document.createElement('div');
+      row.className = 'cart-item';
+      const isOffer = isOfferProduct(p);
+      row.innerHTML = `
+        <div>
+          <div>${p.name}</div>
+          <div class="type">${p.type}${isOffer ? ' · Offer eligible' : ''}</div>
+          <div class="qty-btns">
+            <button onclick="changeQty(${p.id},-1)">−</button>
+            <span>${qty}</span>
+            <button onclick="changeQty(${p.id},1)">+</button>
+          </div>
+        </div>
+        <strong>${isOffer ? 'Offer' : '₹' + (Number(p.price)*qty)}</strong>`;
+      itemsEl.appendChild(row);
+    });
+
+    if(offerQty > 0){
+      const summary = document.createElement('div');
+      summary.className = 'cart-item';
+      summary.innerHTML = `
+        <div>
+          <div><strong>LunexVision Offer</strong></div>
+          <div class="type">${offerQty} eligible product${offerQty>1?'s':''}</div>
+        </div>
+        <strong>₹${offerTotal}</strong>`;
+      itemsEl.appendChild(summary);
+    }
+  }
+
+  document.getElementById('cart-total').textContent = '₹' + total;
+
+  const bar = document.getElementById('bottom-bar');
+  if(count > 0){
+    bar.classList.add('show');
+    document.getElementById('bottom-bar-text').textContent = count + ' item' + (count>1?'s':'') + ' · ₹' + total;
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+
+function getCartPricing(){
+  let offerQty = 0;
+  let contactTotal = 0;
+  const items = [];
+
+  Object.entries(cart).forEach(([id, qty]) => {
+    const p = products.find(pr => pr.id == id);
+    if(!p || qty <= 0) return;
+    const item = { id: p.id, name: p.name, qty: qty, price: Number(p.price), category: p.cat, type: p.type };
+    items.push(item);
+    if(isOfferProduct(p)) offerQty += qty;
+    else contactTotal += Number(p.price) * qty;
+  });
+
+  const offerTotal = getOfferPrice(offerQty);
+  return { items, offerQty, offerTotal, contactTotal, total: offerTotal + contactTotal };
+}
+
+async function startRazorpayCheckout(){
+  const pricing = getCartPricing();
+  if(pricing.items.length === 0){
+    alert('Your cart is empty.');
+    return;
+  }
+
+  if(RAZORPAY_KEY_ID.includes('REPLACE_WITH')){
+    alert('Please add your Razorpay Key ID in the HTML first. Keep the Key Secret only in Supabase Edge Function secrets.');
+    return;
+  }
+
+  const button = document.querySelector('.checkout-btn');
+  button.disabled = true;
+  button.textContent = 'Preparing payment…';
+
+  try {
+    // The server recalculates the cart amount from the product IDs/quantities.
+    // Do not trust the browser total for payment security.
+    const orderResponse = await fetch(RAZORPAY_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        action: 'create-order',
+        items: pricing.items.map(i => ({ id: i.id, qty: i.qty }))
+      })
+    });
+
+    const orderData = await orderResponse.json();
+    if(!orderResponse.ok) throw new Error(orderData.error || 'Could not create Razorpay order.');
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      amount: orderData.amount,
+      currency: orderData.currency || 'INR',
+      name: 'LunexVision',
+      description: 'LunexVision eyewear order',
+      order_id: orderData.order_id,
+      prefill: { name: '', email: '', contact: '' },
+      notes: { offer_total: String(pricing.total) },
+      theme: { color: '#1C2333' },
+      handler: async function(response){
+        try {
+          const verifyResponse = await fetch(RAZORPAY_FUNCTION_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+              'apikey': SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({
+              action: 'verify-payment',
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+          const verifyData = await verifyResponse.json();
+          if(!verifyResponse.ok || !verifyData.verified){
+            throw new Error(verifyData.error || 'Payment verification failed.');
+          }
+          alert('Payment successful! Payment ID: ' + response.razorpay_payment_id);
+          cart = {};
+          updateCartUI();
+          toggleCart(false);
+        } catch(err) {
+          console.error(err);
+          alert('Payment was received but verification failed. Please contact LunexVision before placing another order.');
+        }
+      },
+      modal: { ondismiss: function(){ console.log('Razorpay checkout closed'); } }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', function(response){
+      console.error(response.error);
+      alert('Payment failed: ' + (response.error.description || 'Please try again.'));
+    });
+    rzp.open();
+  } catch(err) {
+    console.error(err);
+    alert(err.message || 'Unable to start payment. Please try again.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Pay Securely with Razorpay';
+  }
+}
+
+function toggleCart(open){
+  document.getElementById('cart-drawer').classList.toggle('show', open);
+  document.getElementById('overlay').classList.toggle('show', open);
+}
+
+loadProducts();
+updateCartUI();
+</script>
+</body>
+</html>
